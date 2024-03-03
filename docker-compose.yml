@@ -1,0 +1,60 @@
+version: "3"
+volumes:
+  log-data:
+services:
+  mongo:
+    container_name: mongo
+    image: mongo:4.2.1
+    restart: always
+    ports:
+      - 27017:27017
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: mongo
+      MONGO_INITDB_ROOT_PASSWORD: mongo
+    expose:
+      - "27017"
+    volumes:
+      - ./mongodb-entrypoint.js:/docker-entrypoint-initdb.d/mongodb-entrypoint.js
+      - ./backend/mongo-data:/data/db
+    networks:
+      - knigths-network
+
+  api:
+    image: node:18-alpine
+    container_name: api
+    working_dir: /usr/src/app
+    command: ["yarn", "start:dev"]
+    expose:
+      - 3000
+    ports:
+      - 3000:3000
+      - 9229:9229
+    volumes:
+      - ./backend/log-data:/usr/src/app/log:rw
+      - ./backend/:/usr/src/app:rw
+    env_file:
+      - ./backend/.env.development
+    depends_on:
+      - mongo
+    networks:
+      - knigths-network
+
+  app:
+    image: node:18-alpine
+    container_name: app
+    working_dir: /usr/src/app
+    command: ["yarn", "serve"]
+    expose:
+      - 8080
+    ports:
+      - 8080:8080
+    volumes:
+      - ./frontend/:/usr/src/app:rw
+    depends_on:
+      - api
+    networks:
+      - knigths-network
+
+networks:
+  knigths-network:
+    driver: bridge
